@@ -95,6 +95,7 @@ type Image = Draft Fast
 -- then reboots the app (by calling topLevel again).
 topLevelWithRestart :: Events KeyEvent -> FRP (Behavior Image)
 topLevelWithRestart kb = do
+  restartE :: Events () <- pure $ filterJust $ keyBoardNav <$> kb
   restartDoneE :: Events () <- secondsLater restartE
   be :: Events (Behavior Image) <- reactimateIO $ fmap (const $ topLevel kb) restartDoneE
   bb :: Behavior (Behavior Image) <- stepper (pure initScreen) (be <> fmap (const $ pure restartScreen) restartE)
@@ -105,9 +106,6 @@ topLevelWithRestart kb = do
 
     restartScreen :: Image
     restartScreen = textWithOptions stdTextLarger "Restarting..."
-
-    restartE :: Events ()
-    restartE = filterJust $ keyBoardNav <$> kb
 
     keyBoardNav :: KeyEvent -> Maybe ()
     keyBoardNav (Key 27) = Just ()
