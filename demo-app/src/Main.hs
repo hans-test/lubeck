@@ -56,6 +56,7 @@ import qualified Data.Colour.Names as Colors
 -- =============================================================================
 import Lubeck.App
 import Lubeck.Html
+import Lubeck.Util
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Html as VD
 import qualified Web.VirtualDom.Html.Attributes as VD
@@ -89,6 +90,28 @@ type Foo = Int
 -- =============================================================================
 
 type Image = Draft Fast
+
+-- Wrapper layer that detects esc, shows "restarting" for 3 seconds and
+-- then reboots the app (by calling topLevel again).
+topLevelWithRestart :: Events KeyEvent -> FRP (Behavior Image)
+topLevelWithRestart kb = do
+  restartDoneE :: Events () <- secondsLater restartE
+  be :: Events (Behavior Image) <- reactimateIO $ fmap (const $ topLevel kb) restartDoneE
+  bb :: Behavior (Behavior Image) <- stepper mempty (be <> fmap (const $ pure restartScreen) restartE)
+  pure $ join bb
+  where
+    restartScreen :: Image
+    restartScreen = textWithOptions stdTextLarger "Restarting..."
+
+    restartE :: Events ()
+    restartE = filterJust $ keyBoardNav <$> kb
+
+    keyBoardNav :: KeyEvent -> Maybe ()
+    keyBoardNav (Key 27) = Just ()
+    keyBoardNav _        = Nothing
+
+    secondsLater :: Events () -> FRP (Events ())
+    secondsLater = reactimateIOAsync . fmap (const $ threadDelay 3000000)
 
 data TopLevelSubNav = ListComp | TreeComp | SideBySide
   deriving (Eq, Show)
@@ -182,7 +205,7 @@ main = do
   print "Initializing"
   (keyU, keyE :: Events KeyEvent) <- newEvent
   subscribeEvent keyE print
-  appRes <- topLevel keyE
+  appRes <- topLevelWithRestart keyE
   cb <- asyncCallback1 $ \canvasDomNode -> do
         print "Done setup"
         setCanvasSizeRetina (DOMCanvasElement canvasDomNode)
