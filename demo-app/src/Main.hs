@@ -96,7 +96,7 @@ topLevel kb = do
   (setActive, activeB :: Signal TopLevelSubNav) <- newBehavior ListComp
   listV <- navigateListComp $ whenB (== ListComp) activeB kb
   treeV <- navigateTreeComp $ whenB (== TreeComp) activeB kb
-  pure $ mconcat [_ <$> activeB, listV, treeV]
+  pure $ mconcat [renderTopLevelSubNav <$> activeB, listV, treeV]
     where
       renderTopLevelSubNav :: TopLevelSubNav -> Image
       renderTopLevelSubNav = translateY 380 . textWithOptions stdTextLarger . toStr
