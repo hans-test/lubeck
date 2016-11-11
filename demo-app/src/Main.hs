@@ -78,7 +78,7 @@ import Lubeck.Drawing.Internal.Backend.FastRenderer (runRenderingLoopOn, CanvasE
 
 type Foo = Int
 
-
+-- data DagZip a = AtNode a
 
 
 
@@ -87,7 +87,45 @@ type Foo = Int
 -- Client
 -- =============================================================================
 
+type Image = Draft Fast
+
+data TopLevelSubNav = ListComp | TreeComp
+
+topLevel :: Events KeyEvent -> FRP (Behavior Image)
+topLevel kb = do
+  (setActive, activeB :: Signal TopLevelSubNav) <- newBehavior ListComp
+  listV <- navigateListComp $ whenB (== ListComp) activeB kb
+  treeV <- navigateTreeComp $ whenB (== TreeComp) activeB kb
+  pure $ mconcat [_ <$> activeB, listV, treeV]
+    where
+      renderTopLevelSubNav :: TopLevelSubNav -> Image
+      renderTopLevelSubNav = translateY 380 . textWithOptions stdTextLarger . toStr
+
+      whenB :: (a -> Bool) -> Behavior a -> Events b -> Events b
+      whenB p b e = filterJust $ snapshotWith (\pv x -> if p pv then Just x else Nothing) b e
+
+navigateListComp :: Events KeyEvent -> FRP (Behavior Image)
+navigateListComp _ = do
+  pure $ pure $ mconcat
+    [ fillColor Colors.green $ scale 200 circle
+    ]
+
+navigateTreeComp :: Events KeyEvent -> FRP (Behavior Image)
+navigateTreeComp _ = do
+  pure $ pure $ mconcat
+    [ translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
+    ]
+
+
+
+
+
+
+
 -- componentSignal :: a -> WidgetT r a a -> Events a -> IO (Signal r, Signal a)
+
+-- selectedModuleW :: [Str] -> Image
+-- selectedModuleW = mconcat . zipWith (\n d -> translateY n d) [0,10..] . fmap (textWithOptions stdTextSmaller)
 
 
 
@@ -105,7 +143,7 @@ initApp _ _ r = do
 
 update :: AppState -> Renderer -> MouseEventType -> MouseEvent -> IO ()
 update s _ et e = do
-  print et
+  -- print et
   writeIORef s (round $ offsetX e, round $ offsetY e)
   pure ()
 
@@ -115,9 +153,7 @@ render s r = do
   renderFastDrawing r $ adaptCoordinates (RenderingOptions (P (V2 800 400)) Center False) $ getDraft $
     mconcat
       [ mempty
-      , translate (V2 0 100) $ strokeColor Colors.blue $ textWithOptions stdText $ ("" <> toStr s')
-      , fillColor Colors.green $ scale 200 circle
-      , translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
+      -- , translate (V2 0 100) $ strokeColor Colors.blue $ textWithOptions stdText $ ("" <> toStr s')
       ]
   pure ()
 
@@ -125,6 +161,7 @@ main :: IO ()
 main = do
   print "Initializing"
   (keyU, keyE :: Events KeyEvent) <- newEvent
+  subscribeEvent keyE print
   cb <- asyncCallback1 $ \canvasDomNode -> do
         print "Done setup"
         setCanvasSizeRetina (DOMCanvasElement canvasDomNode)
