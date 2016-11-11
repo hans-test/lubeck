@@ -18,6 +18,7 @@ packages:
 - 'lubeck-drawing'
 - 'lubeck-dv'
 - 'lubeck-web'
+- 'demo-app'
 
 # flags:
 #   lubeck-core:
@@ -30,7 +31,7 @@ packages:
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 - location:
     git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: e27e2e5ddfc4302dd5a976ec59d17148c320e260
+    commit: 617f4cc2bd69afa2287ddecf36b7fe260941d7a8
 - location:
     git: git@github.com:BeautifulDestinations/benchmark-hs.git
     commit: dab13ed9e822dedf7ef80e16252be2be167e188b
