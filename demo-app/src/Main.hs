@@ -91,7 +91,7 @@ type Foo = Int
 
 type Image = Draft Fast
 
--- Wrapper layer that detects esc, shows "restarting" for 3 seconds and
+-- | Wrapper layer that detects esc, shows "restarting" for 3 seconds and
 -- then reboots the app (by calling topLevel again).
 topLevelWithRestart :: Events KeyEvent -> FRP (Behavior Image)
 topLevelWithRestart kb = do
@@ -119,6 +119,7 @@ topLevelWithRestart kb = do
 data TopLevelSubNav = ListComp | TreeComp | SideBySide
   deriving (Eq, Show)
 
+-- | Top-level component.
 topLevel :: Events KeyEvent -> FRP (Behavior Image)
 topLevel kb = do
   (setActive, activeB :: Behavior TopLevelSubNav) <- newBehavior ListComp
@@ -149,6 +150,7 @@ topLevel kb = do
       whenB :: (a -> Bool) -> Behavior a -> Events b -> Events b
       whenB p b e = filterJust $ snapshotWith (\pv x -> if p pv then Just x else Nothing) b e
 
+-- | List view.
 navigateListComp :: Events KeyEvent -> FRP (Behavior Image)
 navigateListComp _ = do
   pure $ pure $ mconcat
@@ -156,6 +158,7 @@ navigateListComp _ = do
     , fillColor Colors.green $ scale 200 circle
     ]
 
+-- | Tree view.
 navigateTreeComp :: Events KeyEvent -> FRP (Behavior Image)
 navigateTreeComp _ = do
   pure $ pure $ mconcat
