@@ -90,16 +90,17 @@ type Foo = Int
 type Image = Draft Fast
 
 data TopLevelSubNav = ListComp | TreeComp
+  deriving (Eq, Show)
 
 topLevel :: Events KeyEvent -> FRP (Behavior Image)
 topLevel kb = do
-  (setActive, activeB :: Signal TopLevelSubNav) <- newBehavior ListComp
+  (setActive, activeB :: Behavior TopLevelSubNav) <- newBehavior ListComp
   listV <- navigateListComp $ whenB (== ListComp) activeB kb
   treeV <- navigateTreeComp $ whenB (== TreeComp) activeB kb
   pure $ mconcat [renderTopLevelSubNav <$> activeB, listV, treeV]
     where
       renderTopLevelSubNav :: TopLevelSubNav -> Image
-      renderTopLevelSubNav = translateY 380 . textWithOptions stdTextLarger . toStr
+      renderTopLevelSubNav = translateY (-50) . textWithOptions stdTextLarger . toStr
 
       whenB :: (a -> Bool) -> Behavior a -> Events b -> Events b
       whenB p b e = filterJust $ snapshotWith (\pv x -> if p pv then Just x else Nothing) b e
@@ -107,13 +108,15 @@ topLevel kb = do
 navigateListComp :: Events KeyEvent -> FRP (Behavior Image)
 navigateListComp _ = do
   pure $ pure $ mconcat
-    [ fillColor Colors.green $ scale 200 circle
+    [ mempty
+    -- , fillColor Colors.green $ scale 200 circle
     ]
 
 navigateTreeComp :: Events KeyEvent -> FRP (Behavior Image)
 navigateTreeComp _ = do
   pure $ pure $ mconcat
-    [ translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
+    [ mempty
+    -- , translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
     ]
 
 
@@ -135,24 +138,22 @@ stdTextLarger       = stdText { fontSize = First (Just "19px")}
 stdTextEvenLarger   = stdText { fontSize = First (Just "24px")}
 stdTextSmaller      = stdText { fontSize = First (Just "14px")}
 
-type AppState = IORef (Int, Int)
-
-initApp :: CanvasElement -> Context -> Renderer -> IO AppState
+initApp :: CanvasElement -> Context -> Renderer -> IO ()
 initApp _ _ r = do
-  newIORef (0,0)
-
-update :: AppState -> Renderer -> MouseEventType -> MouseEvent -> IO ()
-update s _ et e = do
-  -- print et
-  writeIORef s (round $ offsetX e, round $ offsetY e)
   pure ()
 
-render :: AppState -> Renderer -> IO ()
-render s r = do
-  s' <- readIORef s
+update :: () -> Renderer -> MouseEventType -> MouseEvent -> IO ()
+update s _ et e = do
+  -- writeIORef s (round $ offsetX e, round $ offsetY e)
+  pure ()
+
+render :: Behavior Image -> () -> Renderer -> IO ()
+render i s r = do
+  i' <- pollBehavior i
   renderFastDrawing r $ adaptCoordinates (RenderingOptions (P (V2 800 400)) Center False) $ getDraft $
     mconcat
       [ mempty
+      , i'
       -- , translate (V2 0 100) $ strokeColor Colors.blue $ textWithOptions stdText $ ("" <> toStr s')
       ]
   pure ()
@@ -162,10 +163,11 @@ main = do
   print "Initializing"
   (keyU, keyE :: Events KeyEvent) <- newEvent
   subscribeEvent keyE print
+  appRes <- topLevel keyE
   cb <- asyncCallback1 $ \canvasDomNode -> do
         print "Done setup"
         setCanvasSizeRetina (DOMCanvasElement canvasDomNode)
-        runRenderingLoopOn (DOMCanvasElement canvasDomNode) initApp update render
+        runRenderingLoopOn (DOMCanvasElement canvasDomNode) initApp update (render appRes)
         -- creatingCanvasDoneU (DOMCanvasElement canvasDomNode)
   let mainV :: Signal Html = pure $
           VD.staticNode "div" [VD.id "wrap-canvas"] $
