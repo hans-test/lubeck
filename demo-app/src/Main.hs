@@ -64,7 +64,7 @@ import GHCJS.Foreign.Callback as CB
 import GHCJS.Types(JSVal, JSString)
 import Lubeck.Drawing.Internal.Backend.FastRenderer (runRenderingLoopOn, CanvasElement(..)
   , renderFastDrawing, adaptCoordinates, Renderer, MouseEventType(..), MouseEvent(..)
-  , offsetX, offsetY, Context
+  , offsetX, offsetY, Context, clearRect
   )
 #else
 -- =============================================================================
@@ -97,10 +97,19 @@ topLevel kb = do
   (setActive, activeB :: Behavior TopLevelSubNav) <- newBehavior ListComp
   listV <- navigateListComp $ whenB (== ListComp) activeB kb
   treeV <- navigateTreeComp $ whenB (== TreeComp) activeB kb
-  pure $ mconcat [renderTopLevelSubNav <$> activeB, listV, treeV]
+  subscribeEvent (filterJust $ keyBoardNav <$> kb) setActive
+  pure $ mconcat
+    [ currentSubNavText <$> activeB
+    , (\v a b -> case v of { ListComp -> a ; TreeComp -> b}) <$> activeB <*> listV <*> treeV
+    ]
     where
-      renderTopLevelSubNav :: TopLevelSubNav -> Image
-      renderTopLevelSubNav = translateY (-50) . textWithOptions stdTextLarger . toStr
+      keyBoardNav :: KeyEvent -> Maybe TopLevelSubNav
+      keyBoardNav (Key 49) = Just ListComp
+      keyBoardNav (Key 50) = Just TreeComp
+      keyBoardNav _        = Nothing
+
+      currentSubNavText :: TopLevelSubNav -> Image
+      currentSubNavText = translateY (-50) . textWithOptions stdTextLarger . toStr
 
       whenB :: (a -> Bool) -> Behavior a -> Events b -> Events b
       whenB p b e = filterJust $ snapshotWith (\pv x -> if p pv then Just x else Nothing) b e
@@ -109,14 +118,14 @@ navigateListComp :: Events KeyEvent -> FRP (Behavior Image)
 navigateListComp _ = do
   pure $ pure $ mconcat
     [ mempty
-    -- , fillColor Colors.green $ scale 200 circle
+    , fillColor Colors.green $ scale 200 circle
     ]
 
 navigateTreeComp :: Events KeyEvent -> FRP (Behavior Image)
 navigateTreeComp _ = do
   pure $ pure $ mconcat
     [ mempty
-    -- , translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
+    , translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
     ]
 
 
@@ -138,18 +147,19 @@ stdTextLarger       = stdText { fontSize = First (Just "19px")}
 stdTextEvenLarger   = stdText { fontSize = First (Just "24px")}
 stdTextSmaller      = stdText { fontSize = First (Just "14px")}
 
-initApp :: CanvasElement -> Context -> Renderer -> IO ()
-initApp _ _ r = do
-  pure ()
+initApp :: CanvasElement -> Context -> Renderer -> IO Context
+initApp _ c r = do
+  pure c
 
-update :: () -> Renderer -> MouseEventType -> MouseEvent -> IO ()
-update s _ et e = do
+update :: Context -> Renderer -> MouseEventType -> MouseEvent -> IO ()
+update s c et e = do
   -- writeIORef s (round $ offsetX e, round $ offsetY e)
   pure ()
 
-render :: Behavior Image -> () -> Renderer -> IO ()
-render i s r = do
+render :: Behavior Image -> Context -> Renderer -> IO ()
+render i c r = do
   i' <- pollBehavior i
+  clearRect c 0 0 800 800
   renderFastDrawing r $ adaptCoordinates (RenderingOptions (P (V2 800 400)) Center False) $ getDraft $
     mconcat
       [ mempty
