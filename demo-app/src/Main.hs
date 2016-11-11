@@ -54,8 +54,8 @@ import qualified Data.Colour.Names as Colors
 -- =============================================================================
 -- Client
 -- =============================================================================
-import Lubeck.App(runAppReactive)
-import Lubeck.Html(Html)
+import Lubeck.App
+import Lubeck.Html
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Html as VD
 import qualified Web.VirtualDom.Html.Attributes as VD
@@ -64,7 +64,7 @@ import GHCJS.Foreign.Callback as CB
 import GHCJS.Types(JSVal, JSString)
 import Lubeck.Drawing.Internal.Backend.FastRenderer (runRenderingLoopOn, CanvasElement(..)
   , renderFastDrawing, adaptCoordinates, Renderer, MouseEventType(..), MouseEvent(..)
-  , screenX, screenY, Context
+  , offsetX, offsetY, Context
   )
 #else
 -- =============================================================================
@@ -87,6 +87,10 @@ type Foo = Int
 -- Client
 -- =============================================================================
 
+-- componentSignal :: a -> WidgetT r a a -> Events a -> IO (Signal r, Signal a)
+
+
+
 stdTextFamily       = First (Just "Gill Sans, sans-serif")
 stdText             = mempty { fontFamily = stdTextFamily, fontSize = First (Just "16px"), fontWeight = FontWeightN 500 }
 stdTextLarger       = stdText { fontSize = First (Just "19px")}
@@ -102,7 +106,7 @@ initApp _ _ r = do
 update :: AppState -> Renderer -> MouseEventType -> MouseEvent -> IO ()
 update s _ et e = do
   print et
-  writeIORef s (round $ screenX e, round $ screenY e)
+  writeIORef s (round $ offsetX e, round $ offsetY e)
   pure ()
 
 render :: AppState -> Renderer -> IO ()
@@ -119,7 +123,8 @@ render s r = do
 
 main :: IO ()
 main = do
-  print (123 :: Foo)
+  print "Initializing"
+  (keyU, keyE :: Events KeyEvent) <- newEvent
   cb <- asyncCallback1 $ \canvasDomNode -> do
         print "Done setup"
         setCanvasSizeRetina (DOMCanvasElement canvasDomNode)
@@ -128,7 +133,7 @@ main = do
   let mainV :: Signal Html = pure $
           VD.staticNode "div" [VD.id "wrap-canvas"] $
             pure $ VD.staticNodeWithCB cb "canvas" [] []
-  runAppReactive $ mainV
+  runAppReactive' (mainV, Just keyU)
 
 -- Work around Retina downsampling issue
 -- a la https://coderwall.com/p/vmkk6a/how-to-make-the-canvas-not-look-like-crap-on-retina

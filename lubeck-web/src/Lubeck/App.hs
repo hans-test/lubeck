@@ -16,7 +16,7 @@ module Lubeck.App
     , runAppStatic
     , runAppReactive
     -- ** With keyboard-events
-    , runAppReactiveX
+    , runAppReactive'
     , KbdEvents(..)
     ) where
 import Prelude hiding (div)
@@ -80,10 +80,10 @@ runAppStatic x = runAppReactive (pure x)
 -- subsequently whenever the signal is updated.
 --
 runAppReactive :: Signal Html -> IO ()
-runAppReactive s = runAppReactiveX (s, Nothing)
+runAppReactive s = runAppReactive' (s, Nothing)
 
-runAppReactiveX :: (Signal Html, Maybe (Sink KbdEvents)) -> IO ()
-runAppReactiveX (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $ do
+runAppReactive' :: (Signal Html, Maybe (Sink KbdEvents)) -> IO ()
+runAppReactive' (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $ do
   -- VD = Virtual DOM, RD = Real DOM
 
   -- print "Setting up first VD"
