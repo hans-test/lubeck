@@ -60,8 +60,9 @@ import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Html as VD
 import qualified Web.VirtualDom.Html.Attributes as VD
 import GHCJS.Foreign.Callback as CB
--- import GHCJS.Marshal(toJSVal) -- only need a function to convert Aeson(Value) to JsVal
 import GHCJS.Types(JSVal, JSString)
+
+-- NOTE bleeding edge stuff, only provided by internal/unstable API
 import Lubeck.Drawing.Internal.Backend.FastRenderer (runRenderingLoopOn, CanvasElement(..)
   , renderFastDrawing, adaptCoordinates, Renderer, MouseEventType(..), MouseEvent(..)
   , offsetX, offsetY, Context, clearRect
@@ -89,7 +90,7 @@ type Foo = Int
 
 type Image = Draft Fast
 
-data TopLevelSubNav = ListComp | TreeComp
+data TopLevelSubNav = ListComp | TreeComp | SideBySide
   deriving (Eq, Show)
 
 topLevel :: Events KeyEvent -> FRP (Behavior Image)
@@ -100,12 +101,20 @@ topLevel kb = do
   subscribeEvent (filterJust $ keyBoardNav <$> kb) setActive
   pure $ mconcat
     [ currentSubNavText <$> activeB
-    , (\v a b -> case v of { ListComp -> a ; TreeComp -> b}) <$> activeB <*> listV <*> treeV
+    , ( \v a b -> case v of
+        { ListComp   -> a
+        ; TreeComp   -> b
+        ; SideBySide -> a <> translateX 100 b
+        }
+      ) <$> activeB
+        <*> listV
+        <*> treeV
     ]
     where
       keyBoardNav :: KeyEvent -> Maybe TopLevelSubNav
       keyBoardNav (Key 49) = Just ListComp
       keyBoardNav (Key 50) = Just TreeComp
+      keyBoardNav (Key 51) = Just SideBySide
       keyBoardNav _        = Nothing
 
       currentSubNavText :: TopLevelSubNav -> Image
