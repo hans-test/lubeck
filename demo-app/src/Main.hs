@@ -109,7 +109,7 @@ topLevel kb = do
       keyBoardNav _        = Nothing
 
       currentSubNavText :: TopLevelSubNav -> Image
-      currentSubNavText = translateY (-50) . textWithOptions stdTextLarger . toStr
+      currentSubNavText = translate (V2 (-390) 170) . textWithOptions stdTextLarger . toStr
 
       whenB :: (a -> Bool) -> Behavior a -> Events b -> Events b
       whenB p b e = filterJust $ snapshotWith (\pv x -> if p pv then Just x else Nothing) b e
