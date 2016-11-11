@@ -97,9 +97,12 @@ topLevelWithRestart :: Events KeyEvent -> FRP (Behavior Image)
 topLevelWithRestart kb = do
   restartDoneE :: Events () <- secondsLater restartE
   be :: Events (Behavior Image) <- reactimateIO $ fmap (const $ topLevel kb) restartDoneE
-  bb :: Behavior (Behavior Image) <- stepper mempty (be <> fmap (const $ pure restartScreen) restartE)
+  bb :: Behavior (Behavior Image) <- stepper (pure initScreen) (be <> fmap (const $ pure restartScreen) restartE)
   pure $ join bb
   where
+    initScreen :: Image
+    initScreen = textWithOptions stdTextLarger "Press esc to start"
+
     restartScreen :: Image
     restartScreen = textWithOptions stdTextLarger "Restarting..."
 
@@ -111,7 +114,7 @@ topLevelWithRestart kb = do
     keyBoardNav _        = Nothing
 
     secondsLater :: Events () -> FRP (Events ())
-    secondsLater = reactimateIOAsync . fmap (const $ threadDelay 3000000)
+    secondsLater = reactimateIOAsync . fmap (const $ threadDelay 1000000)
 
 data TopLevelSubNav = ListComp | TreeComp | SideBySide
   deriving (Eq, Show)
