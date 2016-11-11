@@ -25,7 +25,7 @@ where
 
 import BasePrelude
 import Control.Lens.TH
---
+
 import Control.Lens(Getter, to)
 import Control.Lens(_1, _2, _3, _4) -- TODO debug
 import Control.Lens.Operators hiding ((<~))
@@ -544,6 +544,7 @@ drTestPolygon2 = DrawingTest
 
 
 -- Rendering options
+-- TODO basic tests for various origin placements and sizes
 
 drTestRO1 = DrawingTest
   "drTestRO1"

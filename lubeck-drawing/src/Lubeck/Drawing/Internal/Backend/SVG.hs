@@ -99,13 +99,6 @@ data Embed
 
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
-
-  Semantically
-  @
-  -- TODO specify full semantics for mouse/touch interaction
-  Drawing ~ ( P2 -> AlphaColour, Behavior P2 -> Events () -> ?)
-  @s
-
   TODO semantics for mouse interaction.
 
   Because the image is infinite, basic images have simple proportions, for example 'circle', 'square',
@@ -167,20 +160,288 @@ instance Monoid SVGDrawing where
   mconcat = Ap
 
 
-#ifdef __GHCJS__
--- | Does nothing in GHC. In GHCJS, render a 'SVGDrawing' as a virtual dom tree.
-toSvg :: RenderingOptions -> SVGDrawing -> VD.Svg
-toSvg opts d = toSvgAny opts d
-  (VdSvg.text . toJSString)
-  (\n ps -> VdSvg.node (toJSString n) (g <$> ps))
-  where
-    g (name, val) = VD.attribute (toJSString name) (toJSString val)
+{-|
+RDrawing is a tree similar to Drawing, with some differences:
 
-#else
--- | Does nothing in GHC. In GHCJS, render a 'SVGDrawing' as a virtual dom tree.
-toSvg :: RenderingOptions -> SVGDrawing -> ()
-toSvg _ _ = ()
-#endif
+- Child nodes (in RMany) are stored in order bottom-top instead of top-bottom
+
+- Instead of having explicit nodes for transform/style/handlers, each node
+  contains a RNodeInfo object storing all three of them.
+  When converting Drawings to RDrawings, we collapse all style/transform/handlers
+  to the the next descending group or node, for example:
+    T t1 (T t2 (H h (Ap [...]))) -> RMany (t <> t2, mempty, h)
+
+- Masks and Gradients are hoisted to the top and assigned unique identities, so that
+  when rendering to SVG:
+  - Each RTopInfo corresponds to a sub-tree <defs> entry
+  - Each RDrawing corresponds to a node in the SVG tree
+-}
+
+data RTopInfo
+  = RTopGradient !Str !Gradient
+  -- | RTopMask !Str !RDrawing
+
+data RDrawing
+  = RPrim !RNodeInfo !RPrim
+  | RMany !RNodeInfo ![RDrawing]
+   deriving (Show)
+
+instance Monoid RDrawing where
+  mempty = RMany mempty mempty
+
+  -- TODO this could emit extra nodes
+  mappend x y = RMany mempty (y : pure x)
+  mconcat     = RMany mempty . mapReverse id
+
+data RPrim
+   = RCircle
+   | RCircleSector !(Angle Double) !(Angle Double)
+   | RRect
+   | RRectRounded !Double !Double !Double !Double
+   | RLine
+   -- TODO use Seq not []
+   | RLines !Bool ![V2 Double]
+   | RText !Str
+   | REmbed !Embed
+   deriving (Show)
+
+data RNodeInfo
+  = RNodeInfo
+    { rStyle   :: !Style
+    , rTransf  :: !(Transformation Double)
+    , rHandler :: !Handlers
+    , rFill    :: First Str
+    }
+   deriving (Show)
+
+instance Monoid RNodeInfo where
+  mempty = RNodeInfo mempty mempty mempty mempty
+  mappend (RNodeInfo a1 a2 a3 a4) (RNodeInfo b1 b2 b3 b4) =
+    RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
+
+-- | Render monad
+-- Writer for RTopInfo values
+--
+newtype RD a = RD { runRD_ :: WriterT [RTopInfo] (StateT Int Identity) a }
+  deriving (Functor, Applicative, Monad, MonadWriter [RTopInfo], MonadState Int)
+
+runRD :: RD a -> (a, [RTopInfo])
+runRD x = fst $ runState (runWriterT $ runRD_ x) 0
+
+newId :: RD Str
+newId = do
+  i <- get
+  put $ i + 1
+  pure $ "id" <> toStr i
+
+writeTopInfo :: RTopInfo -> RD ()
+writeTopInfo x = tell [x]
+
+
+{-
+NOTE we do coordinate flip/placeOrigo first here, no need to repeat
+
+-}
+renderDrawing :: RenderingOptions -> SVGDrawing -> RD RDrawing
+renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing' mempty $ placeOrigo $ scaleXY (V2 1 (-1)) $ drawing
+  where
+    P (V2 dx dy) = dimensions
+
+    placeOrigo :: SVGDrawing -> SVGDrawing
+    placeOrigo = case originPlacement of
+      TopLeft     -> id
+      Center      -> translate $ V2 (dx/2) (dy/2)
+      BottomLeft  -> translate $ V2 0 dy
+
+    drawingToRDrawing' :: RNodeInfo -> SVGDrawing -> RD RDrawing
+    drawingToRDrawing' nodeInfo x = case x of
+        Circle                 -> pure $ RPrim nodeInfo RCircle
+        CircleSector r1 r2     -> pure $ RPrim nodeInfo $ RCircleSector r1 r2
+        Rect                   -> pure $ RPrim nodeInfo RRect
+        RectRounded x y rx ry  -> pure $ RPrim nodeInfo $ RRectRounded x y rx ry
+        Line                   -> pure $ RPrim nodeInfo RLine
+        (Lines closed vs)      -> pure $ RPrim nodeInfo (RLines closed vs)
+        (Text t)               -> pure $ RPrim nodeInfo (RText t)
+        (Embed e)              -> pure $ RPrim nodeInfo (REmbed e)
+
+        -- TODO render masks properly
+        -- This code just renders it as a group
+        (Mask x y)             -> do
+          ys <- mapMReverse recur [x, y]
+          pure $ RMany nodeInfo ((\x -> seqListE x x) $ ys)
+          where
+            recur = drawingToRDrawing' mempty
+
+        (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
+        (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
+        (SpecialStyle (FillGradient g) x) -> do
+          s <- newId
+          writeTopInfo $ RTopGradient s g
+          drawingToRDrawing' (nodeInfo <> fillToNodeInfo s) x
+
+        (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
+        Em                     -> pure mempty
+
+        -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+        -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
+        -- TODO return empty if concatMap returns empty list
+        (Ap xs)   -> do
+          ys <- mapMReverse recur xs
+          pure $ RMany nodeInfo ((\x -> seqListE x x) ys)
+          where
+            recur = drawingToRDrawing' mempty
+
+    fillToNodeInfo ::  Str -> RNodeInfo
+    fillToNodeInfo s = mempty { rFill = First (Just s) }
+    {-# INLINABLE fillToNodeInfo #-}
+
+    transformationToNodeInfo :: Transformation Double -> RNodeInfo
+    transformationToNodeInfo t = mempty { rTransf = t }
+    {-# INLINABLE transformationToNodeInfo #-}
+
+    styleToNodeInfo :: Style -> RNodeInfo
+    styleToNodeInfo t = mempty { rStyle = t }
+    {-# INLINABLE styleToNodeInfo #-}
+
+    handlerToNodeInfo :: Handlers -> RNodeInfo
+    handlerToNodeInfo t = mempty { rHandler = t }
+    {-# INLINABLE handlerToNodeInfo #-}
+
+
+{-| Generate an SVG from a drawing. TODO rename emitDrawingSvg or similar -}
+emitDrawing
+  :: RenderingOptions
+  -> [RTopInfo]
+  -> RDrawing
+  -> (Str -> n)
+  -> (Str -> [(Str,Str)] -> [n] -> n)
+  -> n
+emitDrawing (RenderingOptions {dimensions, originPlacement}) !topInfo !drawing =
+  svgTopNode
+    (toStr $ floor x)
+    (toStr $ floor y)
+    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+    [ topInfoToDefs topInfo
+    , toSvg1 drawing
+    ]
+  where
+    svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+    svgTopNode w h vb children = E.svg
+      [ A.width (toJSString w)
+      , A.height (toJSString h)
+      , A.viewBox (toJSString vb) ] children
+
+    pointsToSvgString :: [P2 Double] -> Str
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = packStr
+        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+
+    embedToSvg :: Embed -> Svg
+    embedToSvg (EmbedContent str) = E.text (toJSString str)
+    embedToSvg (EmbedNode name attrs children) =
+      VD.node (toJSString name)
+        (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
+        (fmap embedToSvg children)
+
+    -- single x = [x]
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    P (V2 x y) = dimensions
+
+    topInfoToDefs :: [RTopInfo] -> Svg
+    topInfoToDefs ts = E.defs [] (fmap topInfoToDef ts)
+
+    topInfoToDef :: RTopInfo -> Svg
+    topInfoToDef (RTopGradient name (LinearGradient stops)) =
+        E.node "linearGradient" [A.id $ toJSString name] (fmap g stops)
+      where
+        g (GradientStop o c) = E.node "stop"
+          [ A.offset (toJSString (toStr o) <> "%")
+          , A.stopColor (toJSString $ showColor c <> "")
+          ] []
+
+    toSvg1 :: RDrawing -> Svg
+    toSvg1 drawing = case drawing of
+      RPrim nodeInfo prim -> case prim of
+        RCircle -> E.circle
+          (nodeInfoToProperties nodeInfo ++ [A.r "0.5", noScale])
+          []
+        -- Where S and O in [0..1] , <circle r="R" stroke-width="R*2" stroke-dasharray="S*(pi*R*2) (pi*R*2)" transform="rotate(O*360)">
+        RCircleSector a1 a2 ->
+          let (s, o) = anglesToPolarScaleOffset a1 a2
+          in
+            E.g (nodeInfoToProperties nodeInfo) $ pure
+              $ E.circle
+                [ A.r "0.5", A.strokeWidth "1"
+                , A.strokeDasharray $ (toJSString $ toStr (s*pi)) <> " " <> (toJSString $ toStr pi)
+                , A.transform $ "rotate("<>(toJSString $ toStr $ o * 360) <> ")"
+                ]
+            []
+        RRect -> E.rect
+          (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
+          []
+        RRectRounded w h rx ry -> E.rect
+          (nodeInfoToProperties nodeInfo ++
+            [ A.x (toJSString $ toStr $ negate w / 2)
+            , A.y (toJSString $ toStr $ negate h / 2)
+            , A.width (toJSString $ toStr $ w)
+            , A.height (toJSString $ toStr $ h)
+            , A.rx (toJSString $ toStr $ rx)
+            , A.ry (toJSString $ toStr $ ry)
+            , noScale]
+            )
+          []
+        RLine -> E.line
+          ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
+          []
+        (RLines closed vs) -> (if closed then E.polygon else E.polyline)
+          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) vs), noScale] ++ nodeInfoToProperties nodeInfo)
+          []
+        (RText s) -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.text'
+          ([A.x "0", A.y "0", A.transform "matrix(1,0,0,-1,0,0)"])
+          [E.text $ toJSString s]
+        -- TODO need extra group for nodeInfo etc
+        (REmbed e) -> embedToSvg e
+      RMany nodeInfo rdrawings -> case fmap toSvg1 rdrawings of
+        -- TODO use seq in virtual-dom too!
+        nodes -> E.g (nodeInfoToProperties nodeInfo) (toList nodes)
+
+{-# INLINEABLE renderDrawing #-}
+
+nodeInfoToProperties :: RNodeInfo -> [E.Property]
+nodeInfoToProperties (RNodeInfo style transf handlers fill) =
+  transformationToProperty transf : styleToProperty style <> fillToProperty fill <> handlersToProperties handlers
+  where
+    styleToProperty :: Style -> [E.Property]
+    styleToProperty s
+      -- TODO handle null case, see #132
+      -- | Map.null s = []
+      = [A.style $ toJSString $ styleToAttrString s]
+
+    transformationToProperty :: Transformation Double -> E.Property
+    transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
+      VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
+
+    fillToProperty :: First Str -> [E.Property]
+    fillToProperty (First Nothing)   = []
+    fillToProperty (First (Just id)) = [VD.attribute "fill" ("url(#" <> toJSString id <> ")")]
+
+{-# INLINABLE nodeInfoToProperties #-}
+
+
+
+{-
+TODO regressions
+  - event handlers
+  - rounded corners (i.e. sentiment page)
+  - gradients (i.e. sentiment page)
+  - some text align (baseline?) attrs (i.e. sentiment page)
+
+Easiest way to solve: restore RDrawing from before-fastdr-merge tag,
+then rewrite toSvgAny in terms of it.
+
+-}
 
 {-| Generate an SVG from a drawing. -}
 toSvgAny
@@ -300,6 +561,23 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Ap xs      -> single $ mkN "g" ps (mconcat $ fmap (toSvg1 []) $ reverse xs)
 
 
+
+#ifdef __GHCJS__
+-- | Does nothing in GHC. In GHCJS, render a 'SVGDrawing' as a virtual dom tree.
+toSvg :: RenderingOptions -> SVGDrawing -> VD.Svg
+toSvg opts d = toSvgAny opts d
+  (VdSvg.text . toJSString)
+  (\n ps -> VdSvg.node (toJSString n) (g <$> ps))
+  where
+    g (name, val) = VD.attribute (toJSString name) (toJSString val)
+
+#else
+-- | Does nothing in GHC. In GHCJS, render a 'SVGDrawing' as a virtual dom tree.
+toSvg :: RenderingOptions -> SVGDrawing -> ()
+toSvg _ _ = ()
+#endif
+
+
 toSvgStr :: RenderingOptions -> SVGDrawing -> Str
 toSvgStr st dr = toSvgAny st dr id $
         \name attrs nodes -> "<" <> name <> " "
@@ -315,12 +593,6 @@ toSvgStr st dr = toSvgAny st dr id $
 
 
 
--- #ifdef __GHCJS__
---
--- foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+$6+')'"
---   js_transformationToProperty_opt :: Double -> Double -> Double -> Double -> Double -> Double -> JSString
---
--- #endif
 
 -- | Evaluate a list (but not its elements) before returning second argument
 seqList :: [a] -> b -> b
