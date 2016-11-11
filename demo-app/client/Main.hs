@@ -1,9 +1,6 @@
 
 {-
 A demo application using Lubeck libraries.
-
-Cross building GHC/GHCJS can be done in various inelegant ways, here we use CPP.
-
 -}
 
 
@@ -34,26 +31,13 @@ Cross building GHC/GHCJS can be done in various inelegant ways, here we use CPP.
   #-}
 
 module Main where
-{-
 
-loadHaskellProject :: FilePath -> Maybe (DAGZipper () String)
-
-
-
-
--}
-
--- Shared
 import BasePrelude
 import Lubeck.FRP
 import Lubeck.Drawing
 import Lubeck.Str
 import qualified Data.Colour.Names as Colors
 
-#ifdef __GHCJS__
--- =============================================================================
--- Client
--- =============================================================================
 import Lubeck.App
 import Lubeck.Html
 import Lubeck.Util
@@ -63,31 +47,14 @@ import qualified Web.VirtualDom.Html.Attributes as VD
 import GHCJS.Foreign.Callback as CB
 import GHCJS.Types(JSVal, JSString)
 
+import DemoApp
+
 -- NOTE bleeding edge stuff, only provided by internal/unstable API
 import Lubeck.Drawing.Internal.Backend.FastRenderer (runRenderingLoopOn, CanvasElement(..)
   , renderFastDrawing, adaptCoordinates, Renderer, MouseEventType(..), MouseEvent(..)
   , offsetX, offsetY, Context, clearRect
   )
-#else
--- =============================================================================
--- Server
--- =============================================================================
-#endif
 
-
-
-
-
-type Foo = Int
-
--- data DagZip a = AtNode a
-
-
-
-#ifdef __GHCJS__
--- =============================================================================
--- Client
--- =============================================================================
 
 type Image = Draft Fast
 
@@ -166,16 +133,9 @@ navigateTreeComp _ = do
 
 
 
-
-
-
-
 -- componentSignal :: a -> WidgetT r a a -> Events a -> IO (Signal r, Signal a)
-
 -- selectedModuleW :: [Str] -> Image
 -- selectedModuleW = mconcat . zipWith (\n d -> translateY n d) [0,10..] . fmap (textWithOptions stdTextSmaller)
-
-
 
 stdTextFamily       = First (Just "Gill Sans, sans-serif")
 stdText             = mempty { fontFamily = stdTextFamily, fontSize = First (Just "16px"), fontWeight = FontWeightN 500 }
@@ -206,7 +166,8 @@ render i c r = do
 
 main :: IO ()
 main = do
-  print "Initializing"
+  print (123 :: Foo)
+
   (keyU, keyE :: Events KeyEvent) <- newEvent
   subscribeEvent keyE print
   appRes <- topLevelWithRestart keyE
@@ -225,14 +186,3 @@ main = do
 foreign import javascript
   "canvas = $1; canvas.width = 1600; canvas.height = 1600; canvas.style.width = \"800px\"; canvas.style.height = \"800px\"; canvas.getContext('2d').scale(2,2);"
   setCanvasSizeRetina :: CanvasElement -> IO ()
-
-#else
--- =============================================================================
--- Server
--- =============================================================================
-
-
-
-main = print (123 :: Foo)
-
-#endif
