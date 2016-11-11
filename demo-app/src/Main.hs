@@ -47,6 +47,7 @@ loadHaskellProject :: FilePath -> Maybe (DAGZipper () String)
 import BasePrelude
 import Lubeck.FRP
 import Lubeck.Drawing
+import Lubeck.Str
 import qualified Data.Colour.Names as Colors
 
 #ifdef __GHCJS__
@@ -62,7 +63,9 @@ import GHCJS.Foreign.Callback as CB
 -- import GHCJS.Marshal(toJSVal) -- only need a function to convert Aeson(Value) to JsVal
 import GHCJS.Types(JSVal, JSString)
 import Lubeck.Drawing.Internal.Backend.FastRenderer (runRenderingLoopOn, CanvasElement(..)
-  , renderFastDrawing, adaptCoordinates, Renderer)
+  , renderFastDrawing, adaptCoordinates, Renderer, MouseEventType(..), MouseEvent(..)
+  , screenX, screenY, Context
+  )
 #else
 -- =============================================================================
 -- Server
@@ -90,22 +93,31 @@ stdTextLarger       = stdText { fontSize = First (Just "19px")}
 stdTextEvenLarger   = stdText { fontSize = First (Just "24px")}
 stdTextSmaller      = stdText { fontSize = First (Just "14px")}
 
+type AppState = IORef (Int, Int)
 
+initApp :: CanvasElement -> Context -> Renderer -> IO AppState
 initApp _ _ r = do
+  newIORef (0,0)
+
+update :: AppState -> Renderer -> MouseEventType -> MouseEvent -> IO ()
+update s _ et e = do
+  print et
+  writeIORef s (round $ screenX e, round $ screenY e)
   pure ()
-update _ _ _ _ = do
-  pure ()
-render :: () -> Renderer -> IO ()
-render () r = do
+
+render :: AppState -> Renderer -> IO ()
+render s r = do
+  s' <- readIORef s
   renderFastDrawing r $ adaptCoordinates (RenderingOptions (P (V2 800 400)) Center False) $ getDraft $
     mconcat
       [ mempty
+      , translate (V2 0 100) $ strokeColor Colors.blue $ textWithOptions stdText $ ("" <> toStr s')
       , fillColor Colors.green $ scale 200 circle
       , translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
-      , translate (V2 0 100) $ strokeColor Colors.blue $ textWithOptions stdText "Hello!"
       ]
   pure ()
 
+main :: IO ()
 main = do
   print (123 :: Foo)
   cb <- asyncCallback1 $ \canvasDomNode -> do
