@@ -22,7 +22,7 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
                                                  stopPropagation, submit, value)
 
-import           Lubeck.App                     (Html, KbdEvents (..))
+import           Lubeck.App                     (Html, KeyEvent (..))
 import           Lubeck.Forms
 import           Lubeck.FRP
 import           Lubeck.Types
@@ -58,12 +58,12 @@ notificationW sink ns = div [A.class_ "notifPanel"] [ div [] (map (notifItem sin
 --
 -- It will keep showing error messages to the user, appending new ones should they arrive,
 -- until the user will dismiss them one by one.
-notificationsComponent :: [Notification] -> IO (Signal Html, Sink (Maybe Notification), Sink KbdEvents)
+notificationsComponent :: [Notification] -> IO (Signal Html, Sink (Maybe Notification), Sink KeyEvent)
 notificationsComponent initialErrorMessages = do
   (internalSink, internalEvents) <- newSyncEventOf (undefined :: Int)
   (externalSink, externalEvents) <- newSyncEventOf (undefined :: Maybe Notification)
 
-  (kbdSink, kbdE)                <- newSyncEventOf (undefined :: KbdEvents)
+  (kbdSink, kbdE)                <- newSyncEventOf (undefined :: KeyEvent)
 
   subscribeEvent kbdE $ \e -> case e of
     (Key 27) -> internalSink 0 -- esc: remove top most notification

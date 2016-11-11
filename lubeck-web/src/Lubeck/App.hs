@@ -17,7 +17,7 @@ module Lubeck.App
     , runAppReactive
     -- ** With keyboard-events
     , runAppReactive'
-    , KbdEvents(..)
+    , KeyEvent(..)
     ) where
 import Prelude hiding (div)
 import qualified Prelude
@@ -53,7 +53,7 @@ import Lubeck.FRP
 import Lubeck.Html
 import Lubeck.Util (which)
 
-data KbdEvents = Key Int deriving (Show)
+data KeyEvent = Key Int deriving (Show)
 
 foreign import javascript unsafe "document.addEventListener('keyup', $1);"
   js_JSFunListener :: (Callback (JSVal -> IO ())) -> IO ()
@@ -82,7 +82,7 @@ runAppStatic x = runAppReactive (pure x)
 runAppReactive :: Signal Html -> IO ()
 runAppReactive s = runAppReactive' (s, Nothing)
 
-runAppReactive' :: (Signal Html, Maybe (Sink KbdEvents)) -> IO ()
+runAppReactive' :: (Signal Html, Maybe (Sink KeyEvent)) -> IO ()
 runAppReactive' (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $ do
   -- VD = Virtual DOM, RD = Real DOM
 
