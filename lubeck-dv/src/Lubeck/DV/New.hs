@@ -120,6 +120,7 @@ module Lubeck.DV.New
   , bound
   , crossLineX
   , crossLineY
+  , hideLine
 
   -- ** Special
   , label
@@ -425,6 +426,9 @@ crossLineX = customAesthetic "crossLineX"
 
 -- | If present and non-zero, show Y-intercepting cross-lines.
 crossLineY = customAesthetic "crossLineY"
+
+-- | If present and non-zero, don't show line plots.
+hideLine = customAesthetic "hideLine"
 
 -- | Map string values.
 label :: Aesthetic Str
@@ -927,6 +931,7 @@ instance Monoid Geometry where
    mempty  = memptydefault
    mappend = mappenddefault
 
+-- | Retain only rows where the given key is defined and >= 0.5 (when scaled).
 ifT :: Key -> Table Key Cell -> Table Key Cell
 ifT key = filterRows key (\x -> cScaled x >= 0.5)
 
@@ -1035,18 +1040,23 @@ Can be combined with point and fill.
 Aesthetics:
 
 @
-x, y
+x, y, hideLine
 @
 -}
 line :: Geometry
 line = Geometry g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Internal.Render.lineData (Lubeck.DV.Internal.Render.LineData color 0) $ runColumnFinite $ do -- Column monad
+    g t' = Lubeck.DV.Internal.Render.lineData (Lubeck.DV.Internal.Render.LineData color 0) $ runColumnFinite $ do -- Column monad
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
       where
+        t = filterRows' "hideLine" g t'
+          where
+            g Nothing  = True
+            g (Just x) = cScaled x < 0.5
+
         -- TODO color separation
         colors = runColumnFinite $ unscaledAttr "color" t
         color = case colors of

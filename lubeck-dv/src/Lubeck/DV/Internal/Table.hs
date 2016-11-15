@@ -32,6 +32,7 @@ module Lubeck.DV.Internal.Table
   , conjoin2With
   , conjoin2L
   , filterRows
+  , filterRows'
   , getColumn
   -- ** Column type
   , Column
@@ -235,13 +236,19 @@ getColumn k t = case Data.Map.lookup k (tableToMap' t) of
 
 
 {-
-Filter a row by looking at a single key.
+Retain rows where the given key is present and matches the given predicate.
 -}
 filterRows :: Ord k => k -> (a -> Bool) -> Table k a -> Table k a
-filterRows k p (Table t) = Table $ filter (\m -> justJust p $ Data.Map.lookup k m) t
+filterRows k p = filterRows' k (justJust p)
   where
     justJust p (Just x) = p x
     justJust p Nothing  = False
+
+{-
+Retain rows where the given key matches the given predicate.
+-}
+filterRows' :: Ord k => k -> (Maybe a -> Bool) -> Table k a -> Table k a
+filterRows' k p (Table t) = Table $ filter (\m -> p $ Data.Map.lookup k m) t
 
 {-
   short/long zips
