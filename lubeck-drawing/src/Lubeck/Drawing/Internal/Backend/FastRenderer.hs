@@ -146,23 +146,23 @@ foreign import javascript unsafe "console.log($1)"
 
 foreign import javascript unsafe "$1.render(0,$2)"
   renderTransferedFastDrawing :: Renderer -> TransferedFastDrawing -> IO ()
-{-# INLINABLE renderTransferedFastDrawing #-}
+-- {-# INLINABLE renderTransferedFastDrawing #-}
 
 foreign import javascript unsafe "$1.getPointTag_(0,$2,$3,$4)"
   getPointTag' :: Renderer -> TransferedFastDrawing -> Double -> Double -> IO Int
-{-# INLINABLE getPointTag #-}
+-- {-# INLINABLE getPointTag #-}
 
 -- Never call these from high-level API, should be managed by addFinalizer
 
 foreign import javascript unsafe "$1.claim($2)"
   claimD :: Renderer -> TransferedFastDrawing -> IO ()
-{-# INLINABLE claimD #-}
+-- {-# INLINABLE claimD #-}
 foreign import javascript unsafe "$1.release($2)"
   releaseD :: Renderer -> TransferedFastDrawing -> IO ()
-{-# INLINABLE releaseD #-}
+-- {-# INLINABLE releaseD #-}
 foreign import javascript unsafe "$1.release($2)"
   releaseS :: Renderer -> RenderedFastSegment -> IO ()
-{-# INLINABLE releaseS #-}
+-- {-# INLINABLE releaseS #-}
 
 
 type WithRenderer2 a = Renderer -> IO a
@@ -418,26 +418,26 @@ foreign import javascript unsafe "$5.primSegmentSubpath($1,$2,$3,$4)"
   segmentSubpath' :: Bool -> Double -> Double -> RenderedFastSegment -> WithRenderer2 RenderedFastSegment
 
 
-{-# INLINABLE rect' #-}
-{-# INLINABLE circle' #-}
-{-# INLINABLE text' #-}
-{-# INLINABLE textFont' #-}
-{-# INLINABLE fillColor' #-}
-{-# INLINABLE strokeColor' #-}
-{-# INLINABLE transf' #-}
-{-# INLINABLE scaleXY' #-}
-{-# INLINABLE rotate' #-}
-{-# INLINABLE translate' #-}
-{-# INLINABLE ap2' #-}
-{-# INLINABLE tag' #-}
-{-# INLINABLE rect #-}
-{-# INLINABLE circle #-}
-{-# INLINABLE strokeColor #-}
-
-{-# INLINABLE transf #-}
-{-# INLINABLE scaleXY #-}
-{-# INLINABLE rotate #-}
-{-# INLINABLE translate #-}
+-- {-# INLINABLE rect' #-}
+-- {-# INLINABLE circle' #-}
+-- {-# INLINABLE text' #-}
+-- {-# INLINABLE textFont' #-}
+-- {-# INLINABLE fillColor' #-}
+-- {-# INLINABLE strokeColor' #-}
+-- {-# INLINABLE transf' #-}
+-- {-# INLINABLE scaleXY' #-}
+-- {-# INLINABLE rotate' #-}
+-- {-# INLINABLE translate' #-}
+-- {-# INLINABLE ap2' #-}
+-- {-# INLINABLE tag' #-}
+-- {-# INLINABLE rect #-}
+-- {-# INLINABLE circle #-}
+-- {-# INLINABLE strokeColor #-}
+--
+-- {-# INLINABLE transf #-}
+-- {-# INLINABLE scaleXY #-}
+-- {-# INLINABLE rotate #-}
+-- {-# INLINABLE translate #-}
 
 
 

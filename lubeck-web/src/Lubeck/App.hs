@@ -46,7 +46,7 @@ import qualified Web.VirtualDom.Html.Events as DE
 
 import qualified Web.VirtualDom as VD
 
-import GHCJS.Foreign.QQ (js, jsu, jsu')
+-- import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval, JSVal)
 
 import Lubeck.FRP

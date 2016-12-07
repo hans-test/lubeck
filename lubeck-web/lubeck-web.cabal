@@ -21,7 +21,7 @@ library
                      , Lubeck.Forms.File
                      , Lubeck.Html
                      , Lubeck.Web.History
-                     , Lubeck.Web.URI
+                    --  , Lubeck.Web.URI
                      , Components.Notifications
                      , Components.BusyIndicator
                      , Components.MainMenu
