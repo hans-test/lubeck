@@ -51,7 +51,6 @@ executable demo-app
                      , lubeck-core
                      , lubeck-frp
                      , lubeck-drawing
-                     , lubeck-dv
                      , email-validate
                      , hashable
                      , deepseq

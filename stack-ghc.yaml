@@ -1,9 +1,10 @@
 
+resolver: lts-7.8
+# resolver: lts-7.7
 flags: {}
 packages:
 - 'lubeck-core'
 - 'lubeck-frp'
 - 'lubeck-drawing'
-- 'lubeck-dv'
+# - 'lubeck-dv'
 - 'demo-app'
-resolver: lts-3.20
