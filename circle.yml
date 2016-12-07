@@ -10,7 +10,7 @@ dependencies:
   override:
     - make setup
     - make setup
-    - make build
+    - make
 
 test:
   override:
