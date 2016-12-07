@@ -4,12 +4,11 @@ dependencies:
     - "~/.ghc"
     - "~/.ghcjs"
   pre:
-    - wget https://github.com/commercialhaskell/stack/releases/download/v0.1.2.0/stack-0.1.2.0-x86_64-linux.gz -O /tmp/stack.gz
-    - gunzip /tmp/stack.gz && chmod +x /tmp/stack
-    - sudo mv /tmp/stack /usr/bin/stack
+    # TODO non-mutable version
+    - wget -qO- https://get.haskellstack.org/ | sh
   override:
     - make setup
-    - make setup
+    - make setup # needed?
     - make
 
 test:
