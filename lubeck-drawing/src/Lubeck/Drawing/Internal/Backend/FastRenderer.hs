@@ -97,6 +97,7 @@ newtype RenderedFastSegment = RenderedFastSegment JSVal
 newtype TransferedFastDrawing = TransferedFastDrawing JSVal
 
 newtype MouseEvent = MouseEvent JSVal
+
 foreign import javascript unsafe "$1.movementX"
   movementX :: MouseEvent -> Double
 foreign import javascript unsafe "$1.movementY"
@@ -507,7 +508,7 @@ data MouseEventType = MouseMove | MouseUp | MouseDown deriving (Eq, Ord, Show, E
 -}
 runRenderingLoopOn
   :: CanvasElement
-   -> (CanvasElement -> Context -> Renderer -> IO t)             -- ^ Init callback
+   -> (CanvasElement -> Context -> Renderer -> IO t)            -- ^ Init callback
    -> (t -> Renderer -> MouseEventType -> MouseEvent -> IO ())  -- ^ Update callback
    -> (t -> Renderer -> IO ())                                  -- ^ Render callback
    -> IO ()

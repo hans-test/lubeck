@@ -1,23 +1,34 @@
 
 flags: {}
 
-compiler: ghcjs-0.2.0.20151230.100_ghc-7.10.2
-compiler-check: match-exact
-setup-info:
- ghcjs:
-  source:
-#   ghcjs-0.2.0.20151230.3_ghc-7.10.2:
-#    url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
-   ghcjs-0.2.0.20151230.100_ghc-7.10.2:
-    url: "http://loris.beautifuldestinations.com:2006/ghcjs/ghcjs-0.2.0.20151230.100.tar.gz"
+# compiler: ghcjs-0.2.0.20151230.100_ghc-7.10.2
+# compiler-check: match-exact
+# setup-info:
+#  ghcjs:
+#   source:
+# #   ghcjs-0.2.0.20151230.3_ghc-7.10.2:
+# #    url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
+#    ghcjs-0.2.0.20151230.100_ghc-7.10.2:
+#     url: "http://loris.beautifuldestinations.com:2006/ghcjs/ghcjs-0.2.0.20151230.100.tar.gz"
 
+resolver: lts-7.8
+compiler: ghcjs-0.2.1.9007008_ghc-8.0.1
+compiler-check: match-exact
+
+setup-info:
+  ghcjs:
+    source:
+      ghcjs-0.2.1.9007008_ghc-8.0.1:
+          url: http://ghcjs.tolysz.org/ghc-8.0-2016-11-07-lts-7.8-9007008.tar.gz
+          sha1: 190300a3725cde44b2a08be9ef829f2077bf8825
 
 packages:
 - 'lubeck-core'
 - 'lubeck-frp'
 - 'lubeck-drawing'
-- 'lubeck-dv'
+# - 'lubeck-dv'
 - 'lubeck-web'
+- 'demo-app'
 
 # flags:
 #   lubeck-core:
@@ -25,23 +36,23 @@ packages:
 #   lubeck-web:
 #     using-ghcjs: true
 
-- location:
-    git: git@github.com:ghcjs/ghcjs-ffiqq.git
-    commit: da31b18582542fcfceade5ef6b2aca66662b9e20
+# - location:
+#     git: git@github.com:ghcjs/ghcjs-ffiqq.git
+#     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 - location:
     git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: e27e2e5ddfc4302dd5a976ec59d17148c320e260
-- location:
-    git: git@github.com:BeautifulDestinations/benchmark-hs.git
-    commit: dab13ed9e822dedf7ef80e16252be2be167e188b
+    commit: 617f4cc2bd69afa2287ddecf36b7fe260941d7a8
+# - location:
+#     git: git@github.com:BeautifulDestinations/benchmark-hs.git
+#     commit: dab13ed9e822dedf7ef80e16252be2be167e188b
 - location:
     git: git@github.com:msakai/data-interval.git
     commit: f57e950e53e5499f1cbc2609382521bf52105b5e
 - location:
     git: git@github.com:msakai/extended-reals.git
     commit: c724f6fcece279873354f576b9099579cb42f8ec
-- location:
-    git: https://github.com/ghcjs/ghcjs-base.git
-    commit: 831bbe58540158146c3f9b4e2fa960d82b11a1b6
+# - location:
+#     git: https://github.com/ghcjs/ghcjs-base.git
+#     commit: 831bbe58540158146c3f9b4e2fa960d82b11a1b6
 extra-deps: [ ListZipper-1.2.0.2 ]
-resolver: lts-3.20
+# resolver: lts-3.20

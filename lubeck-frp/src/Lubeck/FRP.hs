@@ -101,8 +101,13 @@ module Lubeck.FRP
   , updates
   , current
 
+  -- ** Utility
+  , newSignal
+  , newSignalA
+  , newBehavior
+  , newBehaviorA
+
   -- * Run FRP
-  -- ** Standard
   , newEvent
   , subscribeEvent
   , pollBehavior
@@ -756,6 +761,29 @@ strictifyS s = do
   u2 <- strictify (updates s)
   stepperS z u2
 
+newSignal :: a -> FRP (Sink a, Signal a)
+newSignal z = do
+  (u, e) <- newEvent
+  s <- stepperS z e
+  pure (u, s)
+
+newSignalA :: a -> FRP (Sink (a -> a), Signal a)
+newSignalA z = do
+  (u, e) <- newEvent
+  s <- accumS z e
+  pure (u, s)
+
+newBehavior :: a -> FRP (Sink a, Behavior a)
+newBehavior z = do
+  (u, e) <- newEvent
+  s <- stepper z e
+  pure (u, s)
+
+newBehaviorA :: a -> FRP (Sink (a -> a), Behavior a)
+newBehaviorA z = do
+  (u, e) <- newEvent
+  s <- accumB z e
+  pure (u, s)
 
 
 {-

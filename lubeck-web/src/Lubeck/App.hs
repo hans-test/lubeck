@@ -16,8 +16,8 @@ module Lubeck.App
     , runAppStatic
     , runAppReactive
     -- ** With keyboard-events
-    , runAppReactiveX
-    , KbdEvents(..)
+    , runAppReactive'
+    , KeyEvent(..)
     ) where
 import Prelude hiding (div)
 import qualified Prelude
@@ -53,7 +53,7 @@ import Lubeck.FRP
 import Lubeck.Html
 import Lubeck.Util (which)
 
-data KbdEvents = Key Int deriving (Show)
+data KeyEvent = Key Int deriving (Show)
 
 foreign import javascript unsafe "document.addEventListener('keyup', $1);"
   js_JSFunListener :: (Callback (JSVal -> IO ())) -> IO ()
@@ -80,10 +80,10 @@ runAppStatic x = runAppReactive (pure x)
 -- subsequently whenever the signal is updated.
 --
 runAppReactive :: Signal Html -> IO ()
-runAppReactive s = runAppReactiveX (s, Nothing)
+runAppReactive s = runAppReactive' (s, Nothing)
 
-runAppReactiveX :: (Signal Html, Maybe (Sink KbdEvents)) -> IO ()
-runAppReactiveX (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $ do
+runAppReactive' :: (Signal Html, Maybe (Sink KeyEvent)) -> IO ()
+runAppReactive' (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $ do
   -- VD = Virtual DOM, RD = Real DOM
 
   -- print "Setting up first VD"

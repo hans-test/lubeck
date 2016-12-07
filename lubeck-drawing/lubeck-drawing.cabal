@@ -46,24 +46,24 @@ library
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
 
-executable lubeck-drawing-bench
-  hs-source-dirs:      bench
-  main-is:             Main.hs
-  ghc-options:         -Wall
-  build-depends:       base
-                     , base-prelude
-                    --  , lens
-                     , linear
-                     , colour
-                     , lubeck-core
-                     , lubeck-drawing
-                     , MonadRandom
-  if impl(ghcjs)
-    build-depends:     ghcjs-base
-                    --  , lubeck-web
-                     , virtual-dom
-                     , benchmark
-  default-language:    Haskell2010
+-- executable lubeck-drawing-bench
+--   hs-source-dirs:      bench
+--   main-is:             Main.hs
+--   ghc-options:         -Wall
+--   build-depends:       base
+--                      , base-prelude
+--                     --  , lens
+--                      , linear
+--                      , colour
+--                      , lubeck-core
+--                      , lubeck-drawing
+--                      , MonadRandom
+--   if impl(ghcjs)
+--     build-depends:     ghcjs-base
+--                     --  , lubeck-web
+--                      , virtual-dom
+--                      , benchmark
+--   default-language:    Haskell2010
 
 executable lubeck-drawing-test
   js-sources:          jsbits/fast-renderer.out.js
@@ -86,7 +86,7 @@ executable lubeck-drawing-test
     build-depends:     ghcjs-base
                     --  , lubeck-web
                      , virtual-dom
-                     , benchmark
+                    --  , benchmark
   default-language:    Haskell2010
 
 executable lubeck-drawing-growth-graph
@@ -109,5 +109,5 @@ executable lubeck-drawing-growth-graph
     build-depends:     ghcjs-base
                     --  , lubeck-web
                      , virtual-dom
-                     , benchmark
+                    --  , benchmark
   default-language:    Haskell2010

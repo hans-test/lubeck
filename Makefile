@@ -13,9 +13,11 @@ PROF_FLAGS := --executable-profiling --library-profiling --ghc-options="-fprof-a
 all: ghc ghcjs
 lubeck-drawing/jsbits/fast-renderer.out.js:
 	$(CPP) <lubeck-drawing/jsbits/fast-renderer.js >lubeck-drawing/jsbits/fast-renderer.out.js
+
+.PHONY: setup
 setup:
-       stack setup --stack-yaml=$(GHC)
-       stack setup --stack-yaml=$(GHCJS)
+	stack setup --stack-yaml=$(GHC)
+	stack setup --stack-yaml=$(GHCJS)
 clean: ghc-clean ghcjs-clean
 	rm lubeck-drawing/jsbits/fast-renderer.out.js
 ghc:
