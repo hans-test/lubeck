@@ -29,6 +29,7 @@ packages:
 # - 'lubeck-dv'
 - 'lubeck-web'
 - 'demo-app'
+- '../virtual-dom'
 
 # flags:
 #   lubeck-core:
@@ -39,9 +40,9 @@ packages:
 # - location:
 #     git: git@github.com:ghcjs/ghcjs-ffiqq.git
 #     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
-- location:
-    git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: 617f4cc2bd69afa2287ddecf36b7fe260941d7a8
+# - location:
+#     git: git@github.com:BeautifulDestinations/virtual-dom.git
+#     commit: 617f4cc2bd69afa2287ddecf36b7fe260941d7a8
 # - location:
 #     git: git@github.com:BeautifulDestinations/benchmark-hs.git
 #     commit: dab13ed9e822dedf7ef80e16252be2be167e188b

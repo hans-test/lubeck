@@ -16,6 +16,7 @@ A demo application using Lubeck libraries.
   , NoImplicitPrelude
   , GeneralizedNewtypeDeriving
   , CPP
+  , StrictData
   #-}
 
 {-# OPTIONS_GHC
@@ -32,20 +33,22 @@ A demo application using Lubeck libraries.
 
 module Main where
 
-import BasePrelude
+import BasePrelude hiding (rotate)
 import Lubeck.FRP
 import Lubeck.Drawing
 import Lubeck.Str
 import qualified Data.Colour.Names as Colors
+import qualified Data.Colour.Names as C
 
-import Lubeck.App
+import Lubeck.App -- KeyEvent
 import Lubeck.Html
 import Lubeck.Util
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Html as VD
 import qualified Web.VirtualDom.Html.Attributes as VD
-import GHCJS.Foreign.Callback as CB
+import qualified GHCJS.Foreign.Callback as CB
 import GHCJS.Types(JSVal, JSString)
+import Data.Colour(Colour)
 
 import DemoApp
 
@@ -53,6 +56,7 @@ import DemoApp
 import Lubeck.Drawing.Internal.Backend.FastRenderer (runRenderingLoopOn, CanvasElement(..)
   , renderFastDrawing, adaptCoordinates, Renderer, MouseEventType(..), MouseEvent(..)
   , offsetX, offsetY, Context, clearRect
+  , prerender, usePrerendered
   )
 
 
@@ -60,16 +64,16 @@ type Image = Draft Fast
 
 -- | Wrapper layer that detects esc, shows "restarting" for 3 seconds and
 -- then reboots the app (by calling topLevel again).
-topLevelWithRestart :: Events KeyEvent -> FRP (Behavior Image)
-topLevelWithRestart kb = do
+topLevelWithRestart :: Image -> Events KeyEvent -> FRP (Behavior Image)
+topLevelWithRestart p kb = do
   restartE :: Events () <- pure $ filterJust $ keyBoardNav <$> kb
   restartDoneE :: Events () <- secondsLater restartE
-  be :: Events (Behavior Image) <- reactimateIO $ fmap (const $ topLevel kb) restartDoneE
+  be :: Events (Behavior Image) <- reactimateIO $ fmap (const $ topLevel p kb) restartDoneE
   bb :: Behavior (Behavior Image) <- stepper (pure initScreen) (be <> fmap (const $ pure restartScreen) restartE)
   pure $ join bb
   where
     initScreen :: Image
-    initScreen = textWithOptions stdTextLarger "Press esc to start"
+    initScreen = textWithOptions stdTextLarger "Press esc to start!"
 
     restartScreen :: Image
     restartScreen = textWithOptions stdTextLarger "Restarting..."
@@ -85,11 +89,11 @@ data TopLevelSubNav = ListComp | TreeComp | SideBySide
   deriving (Eq, Show)
 
 -- | Top-level component.
-topLevel :: Events KeyEvent -> FRP (Behavior Image)
-topLevel kb = do
+topLevel :: Image -> Events KeyEvent -> FRP (Behavior Image)
+topLevel p kb = do
   (setActive, activeB :: Behavior TopLevelSubNav) <- newBehavior ListComp
   listV <- navigateListComp $ whenB (== ListComp) activeB kb
-  treeV <- navigateTreeComp $ whenB (== TreeComp) activeB kb
+  treeV <- navigateTreeComp p $ whenB (== TreeComp) activeB kb
   subscribeEvent (filterJust $ keyBoardNav <$> kb) setActive
   pure $ mconcat
     [ currentSubNavText <$> activeB
@@ -124,13 +128,22 @@ navigateListComp _ = do
     ]
 
 -- | Tree view.
-navigateTreeComp :: Events KeyEvent -> FRP (Behavior Image)
-navigateTreeComp _ = do
-  pure $ pure $ mconcat
+navigateTreeComp :: Image -> Events KeyEvent -> FRP (Behavior Image)
+navigateTreeComp p e = do
+  ks :: Behavior KeyEvent <- stepper (Key 0) e
+  pure $ flip fmap ks $ \k -> mconcat
     [ mempty
-    , translate (V2 40 40) $ fillColor Colors.grey $ scale 200 circle
+    , translate (V2 40 40) $ p
+    , translate (V2 100 40) $ textWithOptions stdTextSmaller (toStr k)
     ]
+  where
 
+
+bang :: Colour Double -> Events () -> FRP (Behavior Image)
+bang c e = pure $ pure $ fillColor c (scale 50 circle) <> fillColor C.grey (scale 50 square)
+  where
+    -- TODO bang
+    -- onOff = accumB _
 
 
 -- componentSignal :: a -> WidgetT r a a -> Events a -> IO (Signal r, Signal a)
@@ -143,17 +156,26 @@ stdTextLarger       = stdText { fontSize = First (Just "19px")}
 stdTextEvenLarger   = stdText { fontSize = First (Just "24px")}
 stdTextSmaller      = stdText { fontSize = First (Just "14px")}
 
-initApp :: CanvasElement -> Context -> Renderer -> IO Context
-initApp _ c r = do
-  pure c
 
-update :: Context -> Renderer -> MouseEventType -> MouseEvent -> IO ()
-update s c et e = do
+
+
+
+
+initApp :: Events KeyEvent -> CanvasElement -> Context -> Renderer -> IO (Context, Behavior Image)
+initApp keyE _ c r = do
+  -- TODO Prerender something and pass to topLevelWithRestart...
+  let expensive = getDraft $ mconcat $ take 150 $ iterate (rotate (turn/150)) $ fillColor C.red $ translateX 400 $ scale 10 circle
+  r1 <- prerender expensive r
+  appRes <- topLevelWithRestart (Draft $ usePrerendered r1) keyE
+  pure (c, appRes)
+
+update :: (Context, Behavior Image) -> Renderer -> MouseEventType -> MouseEvent -> IO ()
+update _ c et e = do
   -- writeIORef s (round $ offsetX e, round $ offsetY e)
   pure ()
 
-render :: Behavior Image -> Context -> Renderer -> IO ()
-render i c r = do
+render :: (Context, Behavior Image) -> Renderer -> IO ()
+render (c,i) r = do
   i' <- pollBehavior i
   clearRect c 0 0 800 800
   renderFastDrawing r $ adaptCoordinates (RenderingOptions (P (V2 800 400)) Center False) $ getDraft $
@@ -170,11 +192,11 @@ main = do
 
   (keyU, keyE :: Events KeyEvent) <- newEvent
   subscribeEvent keyE print
-  appRes <- topLevelWithRestart keyE
-  cb <- asyncCallback1 $ \canvasDomNode -> do
+
+  cb <- CB.asyncCallback1 $ \canvasDomNode -> do
         print "Done setup"
         setCanvasSizeRetina (DOMCanvasElement canvasDomNode)
-        runRenderingLoopOn (DOMCanvasElement canvasDomNode) initApp update (render appRes)
+        runRenderingLoopOn (DOMCanvasElement canvasDomNode) (initApp keyE) update render
         -- creatingCanvasDoneU (DOMCanvasElement canvasDomNode)
   let mainV :: Signal Html = pure $
           VD.staticNode "div" [VD.id "wrap-canvas"] $

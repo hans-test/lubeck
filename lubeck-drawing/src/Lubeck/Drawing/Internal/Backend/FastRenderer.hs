@@ -11,7 +11,7 @@
   , NoImplicitPrelude
   , NoImplicitPrelude
   , GeneralizedNewtypeDeriving
-  , CPP
+  , StrictData
   #-}
 
 {-# OPTIONS_GHC
@@ -98,6 +98,27 @@ newtype TransferedFastDrawing = TransferedFastDrawing JSVal
 
 newtype MouseEvent = MouseEvent JSVal
 
+data TagResult = Outside | NoTag | Tag !Int
+  deriving (Eq, Ord, Show)
+data MouseEventType = MouseMove | MouseUp | MouseDown deriving (Eq, Ord, Show, Enum)
+type WithRenderer2 a = Renderer -> IO a
+type WithRenderer3 a = ReaderT Renderer IO a
+newtype FastDrawing = FastDrawing { getFastDrawing :: WithRenderer3 TransferedFastDrawing }
+newtype FastSegment = FastSegment { getFastSegment :: WithRenderer3 RenderedFastSegment }
+
+data TextAlign = TextAlignStart | TextAlignEnd | TextAlignLeft | TextAlignRight | TextAlignCenter -- TODO
+  deriving (Eq, Ord, Enum, Show)
+data TextBaseline
+  = TextBaselineTop | TextBaselineHanging | TextBaselineMiddle
+  | TextBaselineAlphabetic | TextBaselineIdeographic | TextBaselineBottom -- TODO
+  deriving (Eq, Ord, Enum, Show)
+data LineCap = LineCapButt | LineCapRound | LineCapSquare
+  deriving (Eq, Ord, Enum, Show)
+data LineJoin = LineJoinBevel | LineJoinRound | LineJoinMiter
+  deriving (Eq, Ord, Enum, Show)
+
+
+
 foreign import javascript unsafe "$1.movementX"
   movementX :: MouseEvent -> Double
 foreign import javascript unsafe "$1.movementY"
@@ -164,11 +185,6 @@ foreign import javascript unsafe "$1.release($2)"
   releaseS :: Renderer -> RenderedFastSegment -> IO ()
 -- {-# INLINABLE releaseS #-}
 
-
-type WithRenderer2 a = Renderer -> IO a
-type WithRenderer3 a = ReaderT Renderer IO a
-newtype FastDrawing = FastDrawing { getFastDrawing :: WithRenderer3 TransferedFastDrawing }
-newtype FastSegment = FastSegment { getFastSegment :: WithRenderer3 RenderedFastSegment }
 
 -- x y w h draws a rectangle in the firt quadrant if all arguments are positive
 rect :: Double -> Double -> Double -> Double -> FastDrawing
@@ -278,12 +294,6 @@ textFont !font (FastDrawing rd1) = FastDrawing $ do
   res <- (ReaderT $ \r -> textFont' font d1 r)
   finWithRenderer3 res
 
-data TextAlign = TextAlignStart | TextAlignEnd | TextAlignLeft | TextAlignRight | TextAlignCenter -- TODO
-  deriving (Eq, Ord, Enum, Show)
-data TextBaseline
-  = TextBaselineTop | TextBaselineHanging | TextBaselineMiddle
-  | TextBaselineAlphabetic | TextBaselineIdeographic | TextBaselineBottom -- TODO
-  deriving (Eq, Ord, Enum, Show)
 
 textAlign :: TextAlign -> FastDrawing -> FastDrawing
 textAlign !x (FastDrawing rd1) = FastDrawing $ do
@@ -297,10 +307,6 @@ textBaseline !x (FastDrawing rd1) = FastDrawing $ do
   res <- (ReaderT $ \r -> textBaseline' (fromEnum x) d1 r)
   finWithRenderer3 res
 
-data LineCap = LineCapButt | LineCapRound | LineCapSquare
-  deriving (Eq, Ord, Enum, Show)
-data LineJoin = LineJoinBevel | LineJoinRound | LineJoinMiter
-  deriving (Eq, Ord, Enum, Show)
 
 lineWidth :: Double -> FastDrawing -> FastDrawing
 lineWidth !x (FastDrawing rd1) = FastDrawing $ do
@@ -458,9 +464,6 @@ renderFastDrawing r p = do
   d <- prerender ({-adaptCoordinates opts-} p) r
   renderTransferedFastDrawing r d
 
-data TagResult = Outside | NoTag | Tag Int
-  deriving (Eq, Ord, Show)
-
 getPointTag :: Renderer -> TransferedFastDrawing -> Double -> Double -> IO TagResult
 getPointTag !r !d !x !y = do
   r <- getPointTag' r d x y
@@ -493,9 +496,6 @@ finWithRenderer3_S :: RenderedFastSegment -> WithRenderer3 RenderedFastSegment
 finWithRenderer3_S !d = ReaderT $ \r -> do
   addFinalizer d (releaseS r d)
   pure d
-
-
-data MouseEventType = MouseMove | MouseUp | MouseDown deriving (Eq, Ord, Show, Enum)
 
 {-|
  Convenient wrapper for testing and basic apps.
